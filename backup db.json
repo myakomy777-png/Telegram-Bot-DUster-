@@ -1,0 +1,129 @@
+{
+  "name": "backup db",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "2531e1ac-62d0-4f65-ac9e-846b5d457a49",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM prices",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        208,
+        0
+      ],
+      "id": "69c148f0-6edd-4c10-b7a0-cbb07e1879f7",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "mySql": {
+          "id": "mKWO6JJvqltzzlZ4",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst data = items.map(i => i.json);\nconst json = JSON.stringify(data, null, 2);\nconst date = new Date().toISOString().split('T')[0];\n\nreturn [{\n  json: { filename: `backup_${date}.json` },\n  binary: {\n    data: {\n      data: Buffer.from(json).toString('base64'),\n      mimeType: 'application/json',\n      fileName: `backup_${date}.json`\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "6fcef871-7d2d-462e-a996-abdee5d9a849",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "sendDocument",
+        "chatId": "1147635018",
+        "binaryData": true,
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "7d199b3e-4533-4890-9894-e27c19ee15bf",
+      "name": "Send a document",
+      "webhookId": "80716720-e6ad-4807-adec-fbdedce1fc57",
+      "credentials": {
+        "telegramApi": {
+          "id": "oNkGaaVwzewLmld3",
+          "name": "Duster Bot"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "c4a4187f-f3e7-4d8e-b9d9-913e6059b088",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "24918a32802fe76fed05e29bfc792277bee94c4321258220e24eab9dd77f0be7"
+  },
+  "nodeGroups": [],
+  "id": "PrkWKtw1W9UXyqtr",
+  "tags": []
+}

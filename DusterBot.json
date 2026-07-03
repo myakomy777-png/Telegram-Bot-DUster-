@@ -1,0 +1,949 @@
+{
+  "name": "DusterBot",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1120,
+        -176
+      ],
+      "id": "78c400d0-46bf-4dfe-ba0c-2b9f295026e6",
+      "name": "Telegram Trigger",
+      "webhookId": "4fd59974-e336-433c-9c07-8c2bf5378155",
+      "credentials": {
+        "telegramApi": {
+          "id": "oNkGaaVwzewLmld3",
+          "name": "Duster Bot"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO chat_history1 (chat_id, role, message)\nVALUES ({{ $json.message.chat.id }}, 'user', '{{ $json.message.text }}')",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        -176,
+        384
+      ],
+      "id": "56478b7d-c137-48be-a3d7-e569407ff27f",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "mySql": {
+          "id": "mKWO6JJvqltzzlZ4",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT role, message FROM chat_history1\nWHERE chat_id = {{ $('Telegram Trigger').item.json.message.chat.id }}\nORDER BY created_at ASC\nLIMIT 4",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        80,
+        384
+      ],
+      "id": "7059d406-6998-4c5f-b69e-7ebd2ba18d22",
+      "name": "Execute a SQL query1",
+      "credentials": {
+        "mySql": {
+          "id": "mKWO6JJvqltzzlZ4",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst userMessage = $('Telegram Trigger').item.json.message.text.toLowerCase();\nconst chat_id = $('Telegram Trigger').item.json.message.chat.id;\n\n// Прямые ответы без ИИ\nconst aboutBot = ['что умеешь', 'что ты умеешь', 'что умеет', 'функции', 'команды', 'помощь', 'help', 'что можешь', 'что ты можешь'];\nconst aboutRequest = ['заявк', 'как подать', 'хочу подать'];\nconst aboutAdd = ['как добавить цен', 'помоги добавить', 'как использовать add', 'команду add'];\nconst aboutPrices = ['как посмотреть цен', 'как найти цен', 'команду prices'];\n\nif (aboutBot.some(w => userMessage.includes(w))) {\n  return [{ json: { direct_response: true, chat_id, response: 'Я умею:\\n1. Добавлять цены — /add Магнит картошка 150 ул.Ленина 5\\n2. Искать цены — /prices картошка\\n3. Принимать заявки — /заявка' }}];\n}\n\nif (aboutRequest.some(w => userMessage.includes(w))) {\n  return [{ json: { direct_response: true, chat_id, response: 'Напишите /заявка и выберите тип из меню: Доставка, Ремонт или Консультация.' }}];\n}\n\nif (aboutAdd.some(w => userMessage.includes(w))) {\n  return [{ json: { direct_response: true, chat_id, response: 'Чтобы добавить цену напишите:\\n/add [магазин] [товар] [цена] [адрес]\\n\\nПример: /add Магнит картошка 150 ул.Ленина 5' }}];\n}\n\nif (aboutPrices.some(w => userMessage.includes(w))) {\n  return [{ json: { direct_response: true, chat_id, response: 'Чтобы найти цены напишите:\\n/prices [товар]\\n\\nПример: /prices картошка' }}];\n}\n\nconst messages = items.map(item => ({\n  role: item.json.role,\n  content: item.json.message\n}));\n\nmessages.unshift({\n  role: \"system\",\n  content: `Ты помощник Telegram бота. Отвечай КОРОТКО — максимум 2 предложения. Всегда отвечай на русском языке.\n\nВАЖНО: Бот имеет только эти команды:\n- /add [магазин] [товар] [цена] [адрес] — добавить цену\n- /prices [товар] — найти цены\n- /заявка — подать заявку\n\nНикогда не придумывай другие команды. Если не знаешь ответ — скажи что не понял вопрос.`\n});\n\nreturn [{ json: { messages, direct_response: false } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        384
+      ],
+      "id": "a6e9c5db-434c-45d9-92cd-814c50c5888d",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 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"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "llama-3.1-8b-instant"
+            },
+            {
+              "name": "messages",
+              "value": "={{ $json.messages }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        752,
+        576
+      ],
+      "id": "448f3f7d-490c-4c03-815b-f6698ea5d0ba",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO chat_history1 (chat_id, role, message)\nVALUES (\n  {{ $('Telegram Trigger').item.json.message.chat.id }},\n  'assistant',\n  '{{ $json.choices[0].message.content }}'\n)",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        1088,
+        576
+      ],
+      "id": "66c3e2ce-d9a6-42d6-aa06-ef0842e39fba",
+      "name": "Execute a SQL query2",
+      "credentials": {
+        "mySql": {
+          "id": "mKWO6JJvqltzzlZ4",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $('HTTP Request1').item.json.choices[0].message.content ? $('HTTP Request1').item.json.choices[0].message.content.replace(/[*_`\\[\\]()~>#+=|{}.!-]/g, '') : 'Извините, попробуйте еще раз.' }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1328,
+        576
+      ],
+      "id": "5b660488-4097-4e5a-bf95-530f01f60602",
+      "name": "Send a text message1",
+      "webhookId": "b773b426-cec6-462b-8131-54c58e5b70f7",
+      "credentials": {
+        "telegramApi": {
+          "id": "oNkGaaVwzewLmld3",
+          "name": "Duster Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f8941e71-494d-4bc7-a5b2-23b86e1e25fe",
+              "leftValue": "={{ $json.message.text }}",
+              "rightValue": "/add",
+              "operator": {
+                "type": "string",
+                "operation": "startsWith"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -672,
+        16
+      ],
+      "id": "0c4fa5a2-a974-4886-adcc-ec11ba3ac55e",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $json.message.text;\nconst parts = text.split(' ');\n\nconst shop = parts[1] || '';\nconst product = parts[2] || '';\nconst price = parseFloat(parts[3]) || 0;\nconst address = parts.slice(4).join(' ') || '';\nconst chat_id = $json.message.chat.id;\n\n// Проверка на пустые поля\nif (!shop || !product || !price) {\n  return [{ json: { \n    error: true,\n    chat_id: chat_id,\n    error_message: '❌ Неправильный формат! Используйте:\\n/add [магазин] [товар] [цена] [адрес]\\n\\nПример:\\n/add Магнит картошка 150 ул.Ленина 5'\n  }}];\n}\n\nreturn [{ json: { shop, product, price, address, chat_id, error: false } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -416,
+        -80
+      ],
+      "id": "2a318e90-f001-4d13-874a-7c26d5001777",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO prices (shop_name, product_name, price, address, added_by)\nVALUES (\n  '{{ $json.shop }}',\n  '{{ $json.product }}',\n  {{ $json.price }},\n  '{{ $json.address }}',\n  {{ $json.chat_id }}\n)",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        272,
+        -144
+      ],
+      "id": "35c6c613-9743-469e-b0b1-cecf55a77355",
+      "name": "Execute a SQL query3",
+      "credentials": {
+        "mySql": {
+          "id": "mKWO6JJvqltzzlZ4",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=✅ Цена добавлена! Магазин: {{ $('Code in JavaScript1').item.json.shop }}, Товар: {{ $('Code in JavaScript1').item.json.product }}, Цена: {{ $('Code in JavaScript1').item.json.price }}тг",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        528,
+        -144
+      ],
+      "id": "90db4d18-10fe-408d-9bc2-e583aa831b05",
+      "name": "Send a text message",
+      "webhookId": "7c09b05e-6afe-40fe-a254-7bbd6693582c",
+      "credentials": {
+        "telegramApi": {
+          "id": "oNkGaaVwzewLmld3",
+          "name": "Duster Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "df0ada14-81d1-4a54-aaaa-f91649689483",
+              "leftValue": "={{ $json.message.text }}",
+              "rightValue": "/prices",
+              "operator": {
+                "type": "string",
+                "operation": "startsWith"
+              }
+            },
+            {
+              "id": "cf4d8390-c305-43af-ac37-908392fd52d8",
+              "leftValue": "={{ $json.message.text }}",
+              "rightValue": "/заявка",
+              "operator": {
+                "type": "string",
+                "operation": "startsWith"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -416,
+        208
+      ],
+      "id": "51df3550-ed81-4698-95e2-d53245da169d",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $json.message.text;\nconst parts = text.split(' ');\nconst product = parts.slice(1).join(' ') || '';\nconst chat_id = $json.message.chat.id;\n\nreturn [{ json: { product, chat_id, search_all: product === '' } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        48,
+        208
+      ],
+      "id": "c737feff-779e-4497-b159-de65ae35127a",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT shop_name, product_name, price, address \nFROM prices \nWHERE '{{ $json.product }}' = '' OR product_name LIKE '%{{ $json.product }}%'\nORDER BY product_name, price ASC",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        320,
+        208
+      ],
+      "id": "c8b3c2d5-0060-4bab-a1f7-e32d0cf78ba3",
+      "name": "Execute a SQL query4",
+      "credentials": {
+        "mySql": {
+          "id": "mKWO6JJvqltzzlZ4",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nif (items.length === 0) {\n  return [{ json: { response: 'Товары не найдены в базе.' } }];\n}\n\nconst grouped = {};\nitems.forEach(item => {\n  const product = item.json.product_name;\n  if (!grouped[product]) grouped[product] = [];\n  grouped[product].push(item.json);\n});\n\nlet response = '';\n\nfor (const product in grouped) {\n  const sorted = grouped[product].sort((a, b) => a.price - b.price);\n  response += `Цены на ${product}:\\n\\n`;\n  sorted.forEach((item, index) => {\n    response += `${index + 1}. ${item.shop_name}\\n`;\n    response += `   Цена: ${item.price}тг\\n`;\n    if (item.address) response += `   Адрес: ${item.address}\\n`;\n    response += '\\n';\n  });\n  \n  // Найти минимальную цену\n  const minPrice = sorted[0].price;\n  const cheapest = sorted.filter(item => item.price == minPrice);\n  \n  if (cheapest.length === 1) {\n    response += `Самая низкая цена: ${cheapest[0].shop_name} — ${cheapest[0].price}тг\\n\\n`;\n  } else {\n    const shops = cheapest.map(item => item.shop_name).join(', ');\n    response += `Самая низкая цена: ${shops} — ${minPrice}тг\\n\\n`;\n  }\n  \n  response += '---\\n\\n';\n}\n\nreturn [{ json: { response } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        784,
+        208
+      ],
+      "id": "4809ec7f-8fe0-43c5-b64d-753aa9b4dd61",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.response }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1056,
+        208
+      ],
+      "id": "383d6d00-6e86-48db-bff3-4ff0ca1555f8",
+      "name": "Send a text message2",
+      "webhookId": "eb0eafd4-09c9-425c-9f30-72d25352a651",
+      "credentials": {
+        "telegramApi": {
+          "id": "oNkGaaVwzewLmld3",
+          "name": "Duster Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c6cf5804-ec17-4558-9046-61a6c47f71a7",
+              "leftValue": "={{ $json.message.text }}",
+              "rightValue": "/заявка",
+              "operator": {
+                "type": "string",
+                "operation": "startsWith"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -160,
+        48
+      ],
+      "id": "e00abb92-d8bf-468a-b7c1-9ac79eb487e8",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "Выберите тип заявки:",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "Доставка",
+                    "additionalFields": {
+                      "callback_data": "request_delivery"
+                    }
+                  },
+                  {
+                    "text": "Ремонт",
+                    "additionalFields": {
+                      "callback_data": "request_repair"
+                    }
+                  },
+                  {
+                    "text": "Консультация",
+                    "additionalFields": {
+                      "callback_data": "request_consult"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        48,
+        -48
+      ],
+      "id": "8c44223b-54d6-426c-ae7e-4873efa53c17",
+      "name": "Send a text message3",
+      "webhookId": "f560d571-77ca-4cb9-839f-c6e19e832b6b",
+      "credentials": {
+        "telegramApi": {
+          "id": "oNkGaaVwzewLmld3",
+          "name": "Duster Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO requests (chat_id, username, request_type)\nVALUES (\n  {{ $json.chat_id }},\n  '{{ $json.username }}',\n  '{{ $json.request_type }}'\n)",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        -416,
+        -352
+      ],
+      "id": "17d56560-9dd2-41f8-b198-cd9d40e20bae",
+      "name": "Execute a SQL query5",
+      "credentials": {
+        "mySql": {
+          "id": "mKWO6JJvqltzzlZ4",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Code in JavaScript4').item.json.chat_id }}",
+        "text": "=Ваша заявка принята! Тип: {{ $('Code in JavaScript4').item.json.request_type }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -240,
+        -352
+      ],
+      "id": "a03135cf-a12d-428e-9586-59db5b227bb3",
+      "name": "Send a text message4",
+      "webhookId": "7aed494c-fd33-4cf8-ad29-afb0f326cf43",
+      "credentials": {
+        "telegramApi": {
+          "id": "oNkGaaVwzewLmld3",
+          "name": "Duster Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "bd651adc-cf9c-4c79-b5c8-94d62457a89b",
+              "leftValue": "={{ $json.callback_query?.data }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -816,
+        -192
+      ],
+      "id": "3880965c-bf0a-4616-9773-cce80ecdf16c",
+      "name": "If3",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5cd41a73-6aa6-4694-b1a6-04fe25669230",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        48,
+        -208
+      ],
+      "id": "e9e046be-f69a-4ebd-b5eb-1d50362820a6",
+      "name": "If4"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "={{ $json.error_message }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        288,
+        -336
+      ],
+      "id": "4bbe3467-caab-4299-bda8-297c46ec5944",
+      "name": "Send a text message5",
+      "webhookId": "d2e640ce-636d-434a-9027-4aeeb0b2dd61",
+      "credentials": {
+        "telegramApi": {
+          "id": "oNkGaaVwzewLmld3",
+          "name": "Duster Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $json.callback_query;\nreturn [{ json: {\n  chat_id: data.from.id,\n  username: data.from.username,\n  request_type: data.data\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -608,
+        -352
+      ],
+      "id": "38589320-d034-464b-acbb-95dff93efec8",
+      "name": "Code in JavaScript4"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "0bdc3435-652a-4005-bf6c-c81e77856ee5",
+              "leftValue": "={{ $json.direct_response }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        560,
+        384
+      ],
+      "id": "ce4f3d31-e787-457a-9cfe-d183e80b63d1",
+      "name": "If5"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }} ",
+        "text": "={{ $json.response }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        784,
+        368
+      ],
+      "id": "2dfbe651-3fd8-4353-a445-b54580f8a6cc",
+      "name": "Send a text message6",
+      "webhookId": "7729a529-032b-466a-8e59-8e724101eb0f",
+      "credentials": {
+        "telegramApi": {
+          "id": "oNkGaaVwzewLmld3",
+          "name": "Duster Bot"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "If3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "If5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query2": {
+      "main": [
+        [
+          {
+            "node": "Send a text message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "If4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query3": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query4": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Send a text message2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Send a text message3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query5": {
+      "main": [
+        [
+          {
+            "node": "Send a text message4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message3": {
+      "main": [
+        []
+      ]
+    },
+    "If3": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript4",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If4": {
+      "main": [
+        [
+          {
+            "node": "Send a text message5",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute a SQL query3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message5": {
+      "main": [
+        []
+      ]
+    },
+    "Code in JavaScript4": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If5": {
+      "main": [
+        [
+          {
+            "node": "Send a text message6",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "9219d9b2-e8b4-43d5-bd83-d5c6bcbb6d11",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "24918a32802fe76fed05e29bfc792277bee94c4321258220e24eab9dd77f0be7"
+  },
+  "nodeGroups": [],
+  "id": "1MMvCNeisQipeajV",
+  "tags": []
+}
